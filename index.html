@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>東京ジムマップ</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ground:#F3F5F4; --panel:#FFFFFF; --ink:#1B2528; --muted:#5E6B70; --line:#DCE2E1;
+  --accent:#1F5E57; --accent-soft:#E2EFEC; --gold:#9A6B00; --gold-soft:#FBF1D9; --star:#E0A100;
+  --chip:#EDF0EF; --shadow:0 1px 2px rgba(20,30,35,.06),0 4px 16px rgba(20,30,35,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#11181B; --panel:#182226; --ink:#E6ECEC; --muted:#9AA8AC; --line:#2A373C;
+    --accent:#7CC4B8; --accent-soft:#1E3533; --gold:#E7BC57; --gold-soft:#3A2F14; --star:#F2C14E;
+    --chip:#222E33; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#11181B; --panel:#182226; --ink:#E6ECEC; --muted:#9AA8AC; --line:#2A373C;
+  --accent:#7CC4B8; --accent-soft:#1E3533; --gold:#E7BC57; --gold-soft:#3A2F14; --star:#F2C14E;
+  --chip:#222E33; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ground);color:var(--ink);font:14px/1.6 "Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;display:flex;flex-direction:column}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{padding:12px 16px 10px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:7px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font:800 22px/1.2 "Shippori Mincho B1","Hiragino Mincho ProN",serif;margin:0;letter-spacing:.04em}
+.brand small{color:var(--muted);font-size:12px}
+.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row-label{font-size:11px;letter-spacing:.1em;color:var(--muted);width:3.6em;flex:none;white-space:nowrap}
+.chip{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.chip.focus{font-weight:700}
+.grp{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;padding-right:6px;margin-right:2px;border-right:1px solid var(--line);min-width:0;flex:0 1 auto}
+.row{flex-wrap:nowrap;align-items:flex-start}
+.row>.row-label{padding-top:5px}
+#typeRow{flex-wrap:wrap}
+.grp:last-child{border-right:none}
+.grp-tag{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:0 2px 0 4px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+select.sel,input.search{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:3px 10px;font-size:13px}
+input.search{min-width:180px}
+
+main{flex:1;display:grid;grid-template-columns:420px 1fr;min-height:0}
+#side{border-right:1px solid var(--line);background:var(--panel);overflow:auto;min-height:0;position:relative}
+#map{min-height:0;background:var(--ground)}
+.list-head{padding:14px 16px 6px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.list-head h2{font:800 17px/1.3 "Shippori Mincho B1",serif;margin:0;text-wrap:balance}
+.list-head span{color:var(--muted);font-size:12px;white-space:nowrap}
+.sortbar{padding:0 16px 6px;display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
+ol{list-style:none;margin:0;padding:0 8px 12px}
+.item{display:grid;grid-template-columns:24px 72px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:8px;cursor:pointer}
+.item:hover,.item.active{background:var(--accent-soft)}
+.rank{font:800 15px/1.2 "Shippori Mincho B1",serif;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.item:nth-child(-n+3) .rank{color:var(--gold)}
+.thumb{width:72px;height:56px;border-radius:6px;object-fit:cover;background:var(--chip);display:block}
+.name{font-weight:700;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:12px;display:flex;gap:2px 8px;flex-wrap:wrap;margin-top:2px}
+.score{font-variant-numeric:tabular-nums;font-weight:700;font-size:17px;text-align:right;line-height:1.15;white-space:nowrap}
+.score .st{color:var(--star);font-size:13px}
+.score small{display:block;font-weight:400;font-size:10px;color:var(--muted)}
+.score.na{font-size:12px;color:var(--muted);font-weight:500}
+.more{display:block;margin:4px auto 12px;border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:6px 18px;cursor:pointer}
+.empty{padding:24px 16px;color:var(--muted)}
+.note{margin:4px 16px 18px;padding:10px 12px;border-radius:8px;background:var(--chip);font-size:12px;color:var(--muted)}
+.note b{color:var(--ink)}
+
+#detail{position:absolute;inset:0;background:var(--panel);overflow:auto;padding:14px 16px 24px}
+.back{border:none;background:none;color:var(--accent);cursor:pointer;padding:4px 0;font-size:13px}
+.hero{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:10px;background:var(--chip);display:block;margin:8px 0 4px}
+.credit{font-size:11px;color:var(--muted);margin:0 0 6px}
+.d-type{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:6px}
+.d-name{font:800 22px/1.3 "Shippori Mincho B1",serif;margin:4px 0 10px;text-wrap:balance;overflow-wrap:anywhere}
+.bigscore{display:flex;align-items:center;gap:14px;background:var(--gold-soft);border-radius:10px;padding:10px 14px;margin:0 0 14px}
+.bigscore .num{font:800 34px/1 "Shippori Mincho B1",serif;color:var(--gold);font-variant-numeric:tabular-nums}
+.stars{position:relative;display:inline-block;font-size:18px;letter-spacing:2px;line-height:1}
+.stars .bg{color:var(--line)}
+.stars .fg{position:absolute;inset:0;overflow:hidden;color:var(--star);white-space:nowrap}
+.bigscore .sub{font-size:12px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 14px;font-size:13px}
+.facts dt{color:var(--muted);font-size:12px;letter-spacing:.06em}
+.facts dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.badge{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700}
+.links h3{font-size:11px;letter-spacing:.14em;color:var(--muted);margin:0 0 6px;font-weight:500}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:13px;text-align:center;background:var(--panel)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel);grid-column:1/-1;font-weight:700}
+.btn.primary:hover{color:var(--panel);opacity:.9}
+.fine{font-size:11px;color:var(--muted);margin-top:10px}
+
+.gpin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.npin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.npin span{transform:rotate(45deg);color:#fff;font:700 11px/1 "Zen Kaku Gothic New",sans-serif}
+.npin.sel{outline:3px solid var(--gold);outline-offset:1px}
+.leaflet-container{font-family:inherit}
+.tiles-light{filter:saturate(.55) contrast(.95)}
+.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(.85) saturate(.4)}
+.legend{background:var(--panel);color:var(--ink);padding:6px 10px;border-radius:8px;box-shadow:var(--shadow);font-size:12px;line-height:1.7}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.tt-img{width:160px;height:100px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px}
+
+@media (max-width:820px){
+  main{grid-template-columns:1fr;grid-template-rows:46vh auto}
+  #map{grid-row:1}
+  #side{grid-row:2;border-right:none;border-top:1px solid var(--line);overflow:visible}
+  #detail{position:static}
+  body{height:auto}
+  input.search{min-width:0;flex:1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>東京ジムマップ</h1>
+    <small id="tagline">東京23区のジム・スポーツジムを Googleマップの評価（5点満点）と写真で</small>
+  </div>
+  <div class="row" id="areaRow"><span class="row-label">エリア</span></div>
+  <div class="row" id="typeRow"><span class="row-label">種類</span></div>
+  <div class="row" id="optRow"><span class="row-label">条件</span></div>
+</header>
+<main>
+  <section id="side">
+    <div id="listView">
+      <div class="list-head"><h2 id="listTitle"></h2><span id="listCount"></span></div>
+      <div class="sortbar" id="sortBar"></div>
+      <ol id="list"></ol>
+      <div class="note">
+        <b>評価について</b><br>
+        ★はGoogleマップの評価（5点満点）と口コミ件数です（<span id="asof"></span>時点）。口コミが少ない店は点数がぶれやすいため、「おすすめ順」では口コミ件数を加味した<b>補正スコア</b>で並べています。写真はGoogleマップに投稿された写真で、クリックするとGoogleマップで他の写真や口コミを見られます。料金や営業時間は各公式サイトで確認してください。
+      </div>
+    </div>
+    <div id="detail" hidden></div>
+  </section>
+  <div id="map" role="region" aria-label="地図"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="gyms.js"></script>
+<script>
+// ---- 設定 ----
+const FOCUS_WARDS = ['渋谷区','目黒区','世田谷区'];
+const SPOTS = [ // 重点エリア（駅中心・半径 RADIUS）
+  {id:'shimokita', name:'下北沢',   lat:35.6613, lng:139.6680},
+  {id:'sancha',    name:'三軒茶屋', lat:35.6436, lng:139.6700},
+  {id:'aoyama',    name:'青山・表参道', lat:35.6668, lng:139.7160},
+  {id:'shibuya',   name:'渋谷',     lat:35.6580, lng:139.7016},
+  {id:'ebisu',     name:'恵比寿',   lat:35.6467, lng:139.7101},
+  {id:'nakameguro',name:'中目黒',   lat:35.6443, lng:139.6989},
+  {id:'meguro',    name:'目黒',     lat:35.6337, lng:139.7157},
+  {id:'jiyugaoka', name:'自由が丘', lat:35.6076, lng:139.6687},
+  {id:'gakudai',   name:'学芸大学', lat:35.6286, lng:139.6851},
+  {id:'futako',    name:'二子玉川', lat:35.6117, lng:139.6267},
+  {id:'yoyogiuehara',name:'代々木上原', lat:35.6690, lng:139.6797},
+  {id:'sakurashin',name:'桜新町・用賀', lat:35.6300, lng:139.6400},
+];
+const RADIUS = 1000;
+const TYPES = [
+  {id:'all',      name:'すべて',             color:'#1F5E57'},
+  {id:'club',     name:'総合スポーツクラブ', color:'#2E5E9E'},
+  {id:'24h',      name:'24時間・マシンジム', color:'#D35400'},
+  {id:'personal', name:'パーソナルジム',     color:'#8E2C48'},
+  {id:'women',    name:'女性向け・小型',     color:'#B5487D'},
+  {id:'combat',   name:'格闘技・ボクシング', color:'#4E4A2E'},
+  {id:'public',   name:'公共・体育館',       color:'#2F7D4F'},
+  {id:'other',    name:'その他（レンタル等）',             color:'#6C757D'},
+];
+const T = Object.fromEntries(TYPES.map(t=>[t.id,t]));
+const MINS = [{id:0,name:'指定なし'},{id:3.5,name:'★3.5以上'},{id:4,name:'★4.0以上'},{id:4.5,name:'★4.5以上'}];
+const SORTS = [{id:'adj',name:'おすすめ順'},{id:'rt',name:'★の高い順'},{id:'rv',name:'口コミ数順'}];
+const PAGE = 60;
+
+// ---- データ ----
+// GYM_DATA.rows: [名前, 緯度, 経度, 評価, 口コミ数, 区, 町名, 種類, チェーン, 住所, 公式URL, 写真ID, place_id]
+const PRIOR_N = 20, PRIOR_M = 3.6; // 補正スコア（ベイズ平均）
+const GYMS = GYM_DATA.rows.map((r,i)=>{
+  const [n,lat,lng,rt,rv,ward,town,type,chain,addr,web,img,pid]=r;
+  const adj = rt==null ? null : (rt*(rv||0) + PRIOR_M*PRIOR_N)/((rv||0)+PRIOR_N);
+  return {id:i,n,lat,lng,rt,rv:rv||0,rvKnown:rv!=null,ward,town,type,chain,addr,web,img,pid,adj};
+});
+const WARDS = [...new Set(GYMS.map(g=>g.ward))].sort((a,b)=>{
+  const fa=FOCUS_WARDS.indexOf(a), fb=FOCUS_WARDS.indexOf(b);
+  if(fa>=0||fb>=0) return (fa<0?99:fa)-(fb<0?99:fb);
+  return GYMS.filter(g=>g.ward===b).length-GYMS.filter(g=>g.ward===a).length;
+});
+const CHAINS = [...new Set(GYMS.map(g=>g.chain).filter(Boolean))]
+  .map(c=>[c,GYMS.filter(g=>g.chain===c).length]).sort((a,b)=>b[1]-a[1]);
+document.getElementById('asof').textContent = GYM_DATA.asof;
+
+const toRad=d=>d*Math.PI/180;
+function distM(a,b){const R=6371000,dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng);
+  const x=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+const photo=(img,w,h)=>img?`https://lh3.googleusercontent.com/${img}=w${w}-h${h}-k-no`:'';
+// 画像サーバーが一時的に429を返すことがあるので、少し待って再読み込み
+function imgRetry(el){const n=+(el.dataset.r||0); if(n>=4){el.style.visibility='hidden';return;} el.dataset.r=n+1; const src=el.src; setTimeout(()=>{el.src=src.replace(/#.*$/,'')+'#r'+(n+1);},1200+Math.random()*2500*(n+1));}
+document.addEventListener('error',e=>{const t=e.target; if(t.tagName==='IMG'&&t.src.includes('googleusercontent')) imgRetry(t);},true);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---- 状態 ----
+const state={area:'spot:sancha', type:'all', min:0, chain:'', sort:'adj', q:'', sel:null, shown:PAGE};
+try{const s=JSON.parse(localStorage.getItem('gym-filter')||'null'); if(s) Object.assign(state,{area:s.area||state.area,type:s.type||'all',min:s.min||0,chain:s.chain||'',sort:s.sort||'adj'});}catch(e){}
+
+function chip(label,pressed,onClick,color,cls){
+  const b=document.createElement('button'); b.className='chip'+(cls?' '+cls:''); b.type='button'; b.setAttribute('aria-pressed',pressed);
+  if(color){const d=document.createElement('span');d.className='dot';d.style.background=color;b.append(d);}
+  b.append(label); b.onclick=onClick; return b;
+}
+function grp(tag){const g=document.createElement('span');g.className='grp';if(tag){const t=document.createElement('span');t.className='grp-tag';t.textContent=tag;g.append(t);}return g;}
+function renderFilters(){
+  const ar=document.getElementById('areaRow'), tr=document.getElementById('typeRow'), or=document.getElementById('optRow');
+  [ar,tr,or].forEach(r=>{while(r.children.length>1) r.lastChild.remove();});
+  const g1=grp('重点'); SPOTS.forEach(s=>g1.append(chip(s.name,state.area==='spot:'+s.id,()=>set({area:'spot:'+s.id}),null,'focus'))); ar.append(g1);
+  const g2=grp('区'); g2.append(chip('23区すべて',state.area==='all',()=>set({area:'all'})));
+  FOCUS_WARDS.forEach(w=>g2.append(chip(w,state.area==='ward:'+w,()=>set({area:'ward:'+w}),null,'focus')));
+  const sel=document.createElement('select'); sel.className='sel'; sel.setAttribute('aria-label','その他の区');
+  sel.innerHTML=`<option value="">その他の区…</option>`+WARDS.filter(w=>!FOCUS_WARDS.includes(w)).map(w=>`<option value="${esc(w)}"${state.area==='ward:'+w?' selected':''}>${esc(w)}（${GYMS.filter(g=>g.ward===w).length}）</option>`).join('');
+  sel.onchange=()=>sel.value&&set({area:'ward:'+sel.value}); g2.append(sel); ar.append(g2);
+  TYPES.forEach(t=>tr.append(chip(t.name,state.type===t.id,()=>set({type:t.id}),t.id==='all'?null:t.color)));
+  const g3=grp(); MINS.forEach(m=>g3.append(chip(m.name,state.min===m.id,()=>set({min:m.id})))); or.append(g3);
+  const g4=grp(); const cs=document.createElement('select'); cs.className='sel'; cs.setAttribute('aria-label','チェーン');
+  cs.innerHTML=`<option value="">チェーン：すべて</option>`+CHAINS.map(([c,n])=>`<option value="${esc(c)}"${state.chain===c?' selected':''}>${esc(c)}（${n}）</option>`).join('');
+  cs.onchange=()=>set({chain:cs.value});
+  const qi=document.createElement('input'); qi.className='search'; qi.type='search'; qi.placeholder='店名で検索'; qi.value=state.q; qi.setAttribute('aria-label','店名で検索');
+  qi.oninput=()=>{state.q=qi.value; state.sel=null; state.shown=PAGE; renderList(true);};
+  g4.append(cs,qi); or.append(g4);
+}
+function set(p){
+  Object.assign(state,p,{sel:null,shown:PAGE});
+  try{localStorage.setItem('gym-filter',JSON.stringify({area:state.area,type:state.type,min:state.min,chain:state.chain,sort:state.sort}));}catch(e){}
+  renderFilters(); renderList(true);
+}
+function areaInfo(){
+  if(state.area.startsWith('spot:')){const s=SPOTS.find(x=>'spot:'+x.id===state.area); return {label:`${s.name}駅周辺（半径1km）`, spot:s};}
+  if(state.area.startsWith('ward:')) return {label:state.area.slice(5)};
+  return {label:'東京23区'};
+}
+function currentList(){
+  const a=areaInfo(), q=state.q.trim().toLowerCase();
+  let L=GYMS.filter(g=>{
+    if(a.spot){ g._d=distM(g,a.spot); if(g._d>RADIUS) return false; }
+    else if(state.area.startsWith('ward:') && g.ward!==state.area.slice(5)) return false;
+    if(state.type!=='all' && g.type!==state.type) return false;
+    if(state.min && !(g.rt>=state.min)) return false;
+    if(state.chain && g.chain!==state.chain) return false;
+    if(q && !g.n.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const k={adj:g=>g.adj??-1, rt:g=>(g.rt??-1)*1e6+g.rv, rv:g=>g.rv}[state.sort];
+  return L.sort((x,y)=>k(y)-k(x));
+}
+
+// ---- 地図 ----
+const map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([35.655,139.69],13);
+const dark=()=>{const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;};
+let tiles;
+function setTiles(){ if(tiles) map.removeLayer(tiles);
+  tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,className:dark()?'tiles-dark':'tiles-light',
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);}
+setTiles(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',setTiles);
+const rtColor=r=>r==null?'#9AA3A6':r>=4.5?'#B8860B':r>=4.0?'#2E7D32':r>=3.5?'#1F6FB2':r>=3.0?'#7B8794':'#B0433A';
+const legend=L.control({position:'bottomright'});
+legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.innerHTML=[['#B8860B','★4.5以上'],['#2E7D32','★4.0〜'],['#1F6FB2','★3.5〜'],['#7B8794','★3.0〜'],['#B0433A','★3.0未満'],['#9AA3A6','評価なし']].map(([c,t])=>`<i style="background:${c}"></i>${t}`).join('<br>');return d;};
+legend.addTo(map);
+const bgLayer=L.layerGroup().addTo(map), topLayer=L.layerGroup().addTo(map), spotLayer=L.layerGroup().addTo(map);
+
+function tip(g){return `${g.img?`<img class="tt-img" referrerpolicy="no-referrer" src="${photo(g.img,320,200)}" alt="">`:''}<b>${esc(g.n)}</b><br>${g.rt!=null?`★${g.rt.toFixed(1)}${g.rvKnown?`（${g.rv}件）`:''}`:'評価なし'}`;}
+function renderMap(list,fit){
+  bgLayer.clearLayers(); topLayer.clearLayers(); spotLayer.clearLayers();
+  const top=list.slice(0,state.shown);
+  list.slice(state.shown).forEach(g=>{
+    L.circleMarker([g.lat,g.lng],{radius:5,weight:1,color:'#fff',fillColor:rtColor(g.rt),fillOpacity:.85})
+      .bindTooltip(tip(g),{direction:'top'}).on('click',()=>select(g.id)).addTo(bgLayer);
+  });
+  top.forEach((g,i)=>{
+    const sel=state.sel===g.id;
+    L.marker([g.lat,g.lng],{zIndexOffset:sel?2000:1000-i,icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,26],
+      html:`<div class="npin${sel?' sel':''}" style="background:${rtColor(g.rt)}"><span>${i+1}</span></div>`})})
+      .bindTooltip(tip(g),{direction:'top',offset:[0,-24]}).on('click',()=>select(g.id)).addTo(topLayer);
+  });
+  const a=areaInfo();
+  if(a.spot) L.circle([a.spot.lat,a.spot.lng],{radius:RADIUS,color:'#1F5E57',weight:1,dashArray:'4 4',fillOpacity:.04,interactive:false}).addTo(spotLayer);
+  if(fit){
+    const pts=top.slice(0,30).map(g=>[g.lat,g.lng]); if(a.spot) pts.push([a.spot.lat,a.spot.lng]);
+    if(pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:16});
+  }
+}
+
+// ---- 一覧 ----
+function starsHTML(r){const p=Math.max(0,Math.min(100,(r||0)/5*100));return `<span class="stars" aria-hidden="true"><span class="bg">★★★★★</span><span class="fg" style="width:${p}%">★★★★★</span></span>`;}
+function renderList(fit){
+  const list=currentList(), a=areaInfo(), t=T[state.type];
+  document.getElementById('listTitle').textContent=`${a.label}・${t.id==='all'?'ジム':t.name}`;
+  document.getElementById('listCount').textContent=`${list.length}件`;
+  const sb=document.getElementById('sortBar'); sb.innerHTML='並び順'; SORTS.forEach(s=>sb.append(chip(s.name,state.sort===s.id,()=>set({sort:s.id}))));
+  const ol=document.getElementById('list'); ol.innerHTML='';
+  if(!list.length) ol.innerHTML='<li class="empty">この条件に合うジムは見つかりませんでした。エリアや条件を変えてみてください。</li>';
+  const frag=document.createDocumentFragment();
+  list.slice(0,state.shown).forEach((g,i)=>{
+    const li=document.createElement('li'); li.className='item'+(state.sel===g.id?' active':''); li.tabIndex=0;
+    li.innerHTML=`<div class="rank">${i+1}</div>
+      ${g.img?`<img class="thumb" loading="lazy" referrerpolicy="no-referrer" src="${photo(g.img,144,112)}" alt="">`:`<div class="thumb"></div>`}
+      <div><div class="name">${esc(g.n)}</div>
+      <div class="meta"><span><span class="dot" style="background:${T[g.type].color};margin-right:4px"></span>${T[g.type].name}</span><span>${esc(g.town||g.ward)}</span>${g._d!=null&&a.spot?`<span>徒歩${Math.max(1,Math.round(g._d/80))}分</span>`:''}</div></div>
+      ${g.rt!=null?`<div class="score"><span class="st">★</span>${g.rt.toFixed(1)}<small>${g.rvKnown?g.rv.toLocaleString()+'件':'Google'}</small></div>`:`<div class="score na">評価なし</div>`}`;
+    li.onclick=()=>select(g.id); li.onkeydown=e=>{if(e.key==='Enter')select(g.id);};
+    frag.append(li);
+  });
+  ol.append(frag);
+  if(list.length>state.shown){const b=document.createElement('button');b.className='more';b.type='button';b.textContent=`さらに表示（残り${list.length-state.shown}件）`;
+    b.onclick=()=>{state.shown+=PAGE;renderList(false);}; ol.append(b);}
+  renderMap(list,fit); showDetail();
+}
+function select(id){
+  state.sel=id; renderList(false);
+  const g=GYMS[id]; map.flyTo([g.lat,g.lng],Math.max(map.getZoom(),16),{duration:.6});
+}
+const qq=encodeURIComponent;
+function showDetail(){
+  const box=document.getElementById('detail'), lv=document.getElementById('listView');
+  if(state.sel==null){box.hidden=true;lv.hidden=false;return;}
+  const g=GYMS[state.sel], t=T[g.type];
+  const gm=`https://www.google.com/maps/search/?api=1&query=${qq(g.n)}${g.pid?`&query_place_id=${g.pid}`:''}`;
+  const official=g.web?`<a class="btn primary" href="${esc(g.web)}" target="_blank" rel="noopener">公式サイトを開く</a>`
+    :`<a class="btn primary" href="https://www.google.com/search?q=${qq(g.n+' 公式')}" target="_blank" rel="noopener">公式サイトを検索</a>`;
+  box.innerHTML=`
+    <button class="back" type="button" id="back">← 一覧に戻る</button>
+    ${g.img?`<a href="${gm}" target="_blank" rel="noopener"><img class="hero" referrerpolicy="no-referrer" src="${photo(g.img,800,533)}" alt="${esc(g.n)}の写真"></a><p class="credit">写真：Googleマップへの投稿より（クリックで他の写真）</p>`:`<div class="hero" style="display:grid;place-items:center;color:var(--muted)">写真なし</div>`}
+    <div class="d-type"><span class="dot" style="background:${t.color}"></span>${t.name}${g.chain?`・<span class="badge">${esc(g.chain)}</span>`:''}</div>
+    <h2 class="d-name">${esc(g.n)}</h2>
+    <div class="bigscore">
+      <div class="num">${g.rt!=null?g.rt.toFixed(1):'—'}</div>
+      <div>${starsHTML(g.rt)}<div class="sub">Googleマップ ${g.rt!=null?`5点満点${g.rvKnown?`・口コミ${g.rv.toLocaleString()}件`:''}`:'評価なし'}${g.adj!=null?`<br>補正スコア ${g.adj.toFixed(2)}（口コミ数を加味）`:''}</div></div>
+    </div>
+    <dl class="facts">
+      <dt>エリア</dt><dd>${esc(g.ward)}${g.town?' '+esc(g.town):''}</dd>
+      <dt>住所</dt><dd>${esc(g.addr)}</dd>
+    </dl>
+    <div class="links">
+      <h3>写真・口コミ・料金</h3>
+      <div class="btns">
+        ${official}
+        <a class="btn" href="${gm}" target="_blank" rel="noopener">Googleマップ<br>（写真・口コミ）</a>
+        <a class="btn" href="https://www.google.com/search?tbm=isch&q=${qq(g.n)}" target="_blank" rel="noopener">写真をもっと見る</a>
+        <a class="btn" href="https://www.google.com/search?q=${qq(g.n+' 口コミ 評判')}" target="_blank" rel="noopener">他サイトの口コミ</a>
+        <a class="btn" href="https://www.google.com/search?q=${qq(g.n+' 料金 月会費')}" target="_blank" rel="noopener">料金を調べる</a>
+      </div>
+      <p class="fine">評価は${GYM_DATA.asof}時点のGoogleマップの値です。最新の評価・料金・営業時間はリンク先で確認してください。</p>
+    </div>`;
+  box.hidden=false; lv.hidden=true; box.scrollTop=0;
+  document.getElementById('back').onclick=()=>{state.sel=null;renderList(false);};
+}
+
+document.getElementById('tagline').textContent=`東京23区のジム・スポーツジム ${GYMS.length.toLocaleString()}件を Googleマップの評価（5点満点）と写真で`;
+renderFilters(); renderList(true);
+window.addEventListener('load',()=>{map.invalidateSize();renderList(true);});
+new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'));
+</script>
+</body>
+</html>
