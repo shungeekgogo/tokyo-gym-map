@@ -115,8 +115,8 @@ ol{list-style:none;margin:0;padding:0 8px 12px}
 .npin span{transform:rotate(45deg);color:#fff;font:700 11px/1 "Zen Kaku Gothic New",sans-serif}
 .npin.sel{outline:3px solid var(--gold);outline-offset:1px}
 .leaflet-container{font-family:inherit}
-.tiles-light{filter:saturate(.55) contrast(.95)}
-.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(.85) saturate(.4)}
+.tiles-light{filter:saturate(.7) brightness(1.04)}
+.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(1.1) contrast(.9) saturate(.5)}
 .legend{background:var(--panel);color:var(--ink);padding:6px 10px;border-radius:8px;box-shadow:var(--shadow);font-size:12px;line-height:1.7}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .tt-img{width:160px;height:100px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px}
@@ -160,6 +160,7 @@ ol{list-style:none;margin:0;padding:0 8px 12px}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="gyms.js"></script>
+<script src="borders.js"></script>
 <script>
 // ---- 設定 ----
 const FOCUS_WARDS = ['渋谷区','目黒区','世田谷区'];
@@ -284,8 +285,19 @@ function setTiles(){ if(tiles) map.removeLayer(tiles);
 setTiles(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',setTiles);
 const rtColor=r=>r==null?'#9AA3A6':r>=4.5?'#B8860B':r>=4.0?'#2E7D32':r>=3.5?'#1F6FB2':r>=3.0?'#7B8794':'#B0433A';
 const legend=L.control({position:'bottomright'});
-legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.innerHTML=[['#B8860B','★4.5以上'],['#2E7D32','★4.0〜'],['#1F6FB2','★3.5〜'],['#7B8794','★3.0〜'],['#B0433A','★3.0未満'],['#9AA3A6','評価なし']].map(([c,t])=>`<i style="background:${c}"></i>${t}`).join('<br>');return d;};
+legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.innerHTML=[['#B8860B','★4.5以上'],['#2E7D32','★4.0〜'],['#1F6FB2','★3.5〜'],['#7B8794','★3.0〜'],['#B0433A','★3.0未満'],['#9AA3A6','評価なし']].map(([c,t])=>`<i style="background:${c}"></i>${t}`).join('<br>')+'<br><span style="display:inline-block;width:18px;border-top:3px solid var(--gold);vertical-align:middle;margin-right:5px"></span>都県境<br><span style="display:inline-block;width:18px;border-top:2px dashed var(--muted);vertical-align:middle;margin-right:5px"></span>区境';return d;};
 legend.addTo(map);
+// 区境・都県境
+map.createPane('borders'); map.getPane('borders').style.zIndex=350; map.getPane('borders').style.pointerEvents='none';
+const borderLayer=L.layerGroup().addTo(map);
+function drawBorders(){
+  borderLayer.clearLayers();
+  const d=dark(), wc=d?'#B8C6CC':'#4A5A60', pc=d?'#F2C14E':'#9A6B00';
+  const r=L.canvas({pane:'borders'});
+  L.polyline(BORDERS.wards,{renderer:r,pane:'borders',color:wc,weight:1.4,opacity:.8,dashArray:'5 4',interactive:false}).addTo(borderLayer);
+  L.polyline(BORDERS.pref,{renderer:r,pane:'borders',color:pc,weight:3,opacity:.9,interactive:false}).addTo(borderLayer);
+}
+drawBorders(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawBorders);
 const bgLayer=L.layerGroup().addTo(map), topLayer=L.layerGroup().addTo(map), spotLayer=L.layerGroup().addTo(map);
 
 function tip(g){return `${g.img?`<img class="tt-img" referrerpolicy="no-referrer" src="${photo(g.img,320,200)}" alt="">`:''}<b>${esc(g.n)}</b><br>${g.rt!=null?`★${g.rt.toFixed(1)}${g.rvKnown?`（${g.rv}件）`:''}`:'評価なし'}`;}
