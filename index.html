@@ -41,6 +41,7 @@ h1{font:800 22px/1.2 "Shippori Mincho B1","Hiragino Mincho ProN",serif;margin:0;
 .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .row-label{font-size:11px;letter-spacing:.1em;color:var(--muted);width:3.6em;flex:none;white-space:nowrap}
 .chip{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip{white-space:nowrap;flex:none}
 .chip:hover{border-color:var(--accent)}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
 .chip.focus{font-weight:700}
@@ -126,6 +127,9 @@ ol{list-style:none;margin:0;padding:0 8px 12px}
   #detail{position:static}
   body{height:auto}
   input.search{min-width:0;flex:1}
+  .row{flex-wrap:wrap}
+  .grp{border-right:none;padding-right:0;flex:1 1 100%}
+  select.sel{max-width:100%}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -297,6 +301,7 @@ function drawBorders(){
   L.polyline(BORDERS.pref,{renderer:r,pane:'borders',color:pc,weight:3,opacity:.9,interactive:false}).addTo(borderLayer);
 }
 drawBorders(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawBorders);
+let pendingFit=false;
 const bgLayer=L.layerGroup().addTo(map), topLayer=L.layerGroup().addTo(map), spotLayer=L.layerGroup().addTo(map);
 
 function tip(g){return `${g.img?`<img class="tt-img" referrerpolicy="no-referrer" src="${photo(g.img,320,200)}" alt="">`:''}<b>${esc(g.n)}</b><br>${g.rt!=null?`★${g.rt.toFixed(1)}${g.rvKnown?`（${g.rv}件）`:''}`:'評価なし'}`;}
@@ -315,7 +320,9 @@ function renderMap(list,fit){
   });
   const a=areaInfo();
   if(a.spot) L.circle([a.spot.lat,a.spot.lng],{radius:RADIUS,color:'#1F5E57',weight:1,dashArray:'4 4',fillOpacity:.04,interactive:false}).addTo(spotLayer);
+  if(fit&&(map.getSize().x<50||map.getSize().y<50)){pendingFit=true; fit=false;} // 地図が見えていない間は合わせない
   if(fit){
+    pendingFit=false;
     const pts=top.slice(0,30).map(g=>[g.lat,g.lng]); if(a.spot) pts.push([a.spot.lat,a.spot.lng]);
     if(pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:16});
   }
@@ -391,7 +398,11 @@ document.getElementById('tagline').textContent=`東京23区のジム・スポー
 renderFilters(); renderList(true);
 window.addEventListener('load',()=>{map.invalidateSize();renderList(true);});
 // 読み込み直後に地図の大きさが変わったら、全体が収まるように合わせ直す
-let refitTimer; new ResizeObserver(()=>{map.invalidateSize(); if(performance.now()<8000&&state.sel==null){clearTimeout(refitTimer); refitTimer=setTimeout(()=>renderList(true),150);}}).observe(document.getElementById('map'));
+// （非表示のタブで開いて後から表示された場合も含む）
+let refitTimer;
+function refitIfPending(){ map.invalidateSize(); if(pendingFit&&map.getSize().y>=50){clearTimeout(refitTimer); refitTimer=setTimeout(()=>renderMap(currentList(),true),150);} }
+new ResizeObserver(refitIfPending).observe(document.getElementById('map'));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refitIfPending(); });
 </script>
 </body>
 </html>
