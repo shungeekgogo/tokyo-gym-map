@@ -282,9 +282,13 @@ const map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([35.655,139.
 const dark=()=>{const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;};
 let tiles;
 function setTiles(){ if(tiles) map.removeLayer(tiles);
-  // 国土地理院の標準地図（無料・キー不要。ファイルを直接開いても表示できる）
-  tiles=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:19,maxNativeZoom:18,
-    attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（国土地理院）'}).addTo(map);}
+  // 国土地理院の地図（無料・キー不要。ファイルを直接開いても表示できる）
+  // 広域（〜ズーム13）は標準地図、町レベル（ズーム14〜）は建物がオレンジにならない淡色地図
+  const attr='<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（国土地理院）';
+  tiles=L.layerGroup([
+    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:13,attribution:attr}),
+    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{minZoom:14,maxZoom:19,maxNativeZoom:18,attribution:attr}),
+  ]).addTo(map);}
 setTiles(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',setTiles);
 const rtColor=r=>r==null?'#9AA3A6':r>=4.5?'#B8860B':r>=4.0?'#2E7D32':r>=3.5?'#1F6FB2':r>=3.0?'#7B8794':'#B0433A';
 const legend=L.control({position:'bottomright'});
