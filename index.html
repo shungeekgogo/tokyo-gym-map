@@ -161,8 +161,8 @@ ol{list-style:none;margin:0;padding:0 8px 12px}
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="gyms.js"></script>
-<script src="borders.js"></script>
+<script src="gyms.js?v=20260928"></script>
+<script src="borders.js?v=20260928"></script>
 <script>
 // ---- 設定 ----
 const FOCUS_WARDS = ['渋谷区','目黒区','世田谷区'];
@@ -179,6 +179,8 @@ const SPOTS = [ // 重点エリア（駅中心・半径 RADIUS）
   {id:'futako',    name:'二子玉川', lat:35.6117, lng:139.6267},
   {id:'yoyogiuehara',name:'代々木上原', lat:35.6690, lng:139.6797},
   {id:'sakurashin',name:'桜新町・用賀', lat:35.6300, lng:139.6400},
+  {id:'kasai',     name:'葛西',     lat:35.6636, lng:139.8727},
+  {id:'nishikasai',name:'西葛西',   lat:35.6646, lng:139.8593},
 ];
 const RADIUS = 1000;
 const TYPES = [
