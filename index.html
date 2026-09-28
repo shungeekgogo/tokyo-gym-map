@@ -115,8 +115,6 @@ ol{list-style:none;margin:0;padding:0 8px 12px}
 .npin span{transform:rotate(45deg);color:#fff;font:700 11px/1 "Zen Kaku Gothic New",sans-serif}
 .npin.sel{outline:3px solid var(--gold);outline-offset:1px}
 .leaflet-container{font-family:inherit}
-.tiles-light{filter:saturate(.7) brightness(1.04)}
-.tiles-dark{filter:invert(1) hue-rotate(180deg) brightness(1.1) contrast(.9) saturate(.5)}
 .legend{background:var(--panel);color:var(--ink);padding:6px 10px;border-radius:8px;box-shadow:var(--shadow);font-size:12px;line-height:1.7}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .tt-img{width:160px;height:100px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px}
@@ -280,8 +278,9 @@ const map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([35.655,139.
 const dark=()=>{const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;};
 let tiles;
 function setTiles(){ if(tiles) map.removeLayer(tiles);
-  tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,className:dark()?'tiles-dark':'tiles-light',
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);}
+  // 国土地理院の標準地図（無料・キー不要。ファイルを直接開いても表示できる）
+  tiles=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:19,maxNativeZoom:18,
+    attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>（国土地理院）'}).addTo(map);}
 setTiles(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',setTiles);
 const rtColor=r=>r==null?'#9AA3A6':r>=4.5?'#B8860B':r>=4.0?'#2E7D32':r>=3.5?'#1F6FB2':r>=3.0?'#7B8794':'#B0433A';
 const legend=L.control({position:'bottomright'});
@@ -292,7 +291,7 @@ map.createPane('borders'); map.getPane('borders').style.zIndex=350; map.getPane(
 const borderLayer=L.layerGroup().addTo(map);
 function drawBorders(){
   borderLayer.clearLayers();
-  const d=dark(), wc=d?'#B8C6CC':'#4A5A60', pc=d?'#F2C14E':'#9A6B00';
+  const wc='#51626A', pc='#D98A00'; // 地図は常に明るいので線の色は固定
   const r=L.canvas({pane:'borders'});
   L.polyline(BORDERS.wards,{renderer:r,pane:'borders',color:wc,weight:1.4,opacity:.8,dashArray:'5 4',interactive:false}).addTo(borderLayer);
   L.polyline(BORDERS.pref,{renderer:r,pane:'borders',color:pc,weight:3,opacity:.9,interactive:false}).addTo(borderLayer);
@@ -391,7 +390,8 @@ function showDetail(){
 document.getElementById('tagline').textContent=`東京23区のジム・スポーツジム ${GYMS.length.toLocaleString()}件を Googleマップの評価（5点満点）と写真で`;
 renderFilters(); renderList(true);
 window.addEventListener('load',()=>{map.invalidateSize();renderList(true);});
-new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map'));
+// 読み込み直後に地図の大きさが変わったら、全体が収まるように合わせ直す
+let refitTimer; new ResizeObserver(()=>{map.invalidateSize(); if(performance.now()<8000&&state.sel==null){clearTimeout(refitTimer); refitTimer=setTimeout(()=>renderList(true),150);}}).observe(document.getElementById('map'));
 </script>
 </body>
 </html>

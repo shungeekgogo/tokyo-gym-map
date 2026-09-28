@@ -32,4 +32,4 @@ python -m http.server 8766 --directory tokyo-gym-map
 
 ## クレジット
 
-地図・区境・都県境 © OpenStreetMap contributors ／ Leaflet ／ 評価・写真 © Google マップと投稿者
+背景地図：地理院タイル（国土地理院）／区境・都県境 © OpenStreetMap contributors ／ Leaflet ／ 評価・写真 © Google マップと投稿者
