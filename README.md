@@ -44,3 +44,12 @@ python -m http.server 8766 --directory tokyo-gym-map
 ## クレジット
 
 背景地図：地理院タイル（国土地理院）／区境・都県境 © OpenStreetMap contributors ／ Leaflet ／ 評価・写真 © Google マップと投稿者
+
+## 複数の PC で作業する
+
+GitHub を正本として、どの PC でも同じファイル構成で作業できるようにしています。
+
+- 新しい PC では、Claude フォルダで `tokyo-meiten-map\tools\sync-all.cmd` を実行すると全リポジトリがそろいます（またはこのリポジトリを `git clone`）。Windows では Git for Windows が必要です。
+- Claude Code を開くと、SessionStart フック（`.claude/hooks/sync-from-github.sh`）が GitHub の最新版を確認し、この PC のファイルが古ければ自動で更新します。未コミットの変更や競合で更新できない場合はその旨を表示します。
+- 作業を終えるとき、Stop フック（`.claude/hooks/check-pushed.sh`）が未コミット・未 push の変更を検出し、push するよう Claude に差し戻します。
+- フックの設定は `.claude/settings.json`（git 管理）にあります。
